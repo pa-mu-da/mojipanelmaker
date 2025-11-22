@@ -137,6 +137,22 @@
                         <label>縁取り色 <input type="color" id="textOutlineColor" value="#ffffff"></label>
                         <label>太さ <input type="number" id="textOutlineWidth" value="5" min="0"> px</label>
                     </div>
+                    <div class="input-row indent" id="doubleOutlineSection" style="display: none;">
+                        <label><input type="checkbox" id="doubleOutlineEnabled"> 二重縁取り</label>
+                    </div>
+                    <div class="input-row indent" id="doubleOutlineSettings" style="display: none; margin-left: 48px;">
+                        <label>
+                            <input type="radio" name="doubleOutlineMode" value="normal" checked> 通常
+                        </label>
+                        <label>
+                            <input type="radio" name="doubleOutlineMode" value="blur"> ぼかし
+                        </label>
+                    </div>
+                    <div class="input-row indent" id="doubleOutlineColorWidth"
+                        style="display: none; margin-left: 48px;">
+                        <label>色 <input type="color" id="doubleOutlineColor" value="#000000"></label>
+                        <label>太さ <input type="number" id="doubleOutlineWidth" value="3" min="1"> px</label>
+                    </div>
                 </section>
             </div>
 

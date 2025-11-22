@@ -19,11 +19,16 @@ class App {
             textAlign: 'center',
             outlineEnabled: true,
             outlineColor: '#ffffff',
-            outlineWidth: 5
+            outlineWidth: 5,
+            doubleOutlineEnabled: false,
+            doubleOutlineMode: 'normal',
+            doubleOutlineColor: '#000000',
+            doubleOutlineWidth: 3
         };
 
         this.initElements();
         this.initEventListeners();
+        this.updateDoubleOutlineVisibility();
     }
 
     initElements() {
@@ -48,12 +53,19 @@ class App {
             outlineEnabled: document.getElementById('textOutlineEnabled'),
             outlineColor: document.getElementById('textOutlineColor'),
             outlineWidth: document.getElementById('textOutlineWidth'),
+            doubleOutlineEnabled: document.getElementById('doubleOutlineEnabled'),
+            doubleOutlineMode: document.getElementsByName('doubleOutlineMode'),
+            doubleOutlineColor: document.getElementById('doubleOutlineColor'),
+            doubleOutlineWidth: document.getElementById('doubleOutlineWidth'),
             text: document.getElementById('textInput'),
             generate: document.getElementById('generateBtn'),
             downloadZip: document.getElementById('downloadZipBtn'),
             previewContainer: document.getElementById('previewContainer'),
             bgSettingColor: document.getElementById('bgSettingColor'),
-            bgSettingImage: document.getElementById('bgSettingImage')
+            bgSettingImage: document.getElementById('bgSettingImage'),
+            doubleOutlineSection: document.getElementById('doubleOutlineSection'),
+            doubleOutlineSettings: document.getElementById('doubleOutlineSettings'),
+            doubleOutlineColorWidth: document.getElementById('doubleOutlineColorWidth')
         };
     }
 
@@ -105,6 +117,44 @@ class App {
         this.inputs.fontSelect.addEventListener('change', (e) => {
             this.loadGoogleFont(e.target.value);
         });
+
+        // Double outline visibility control
+        this.inputs.outlineEnabled.addEventListener('change', () => {
+            this.updateDoubleOutlineVisibility();
+        });
+
+        this.inputs.outlineWidth.addEventListener('input', () => {
+            this.updateDoubleOutlineVisibility();
+        });
+
+        this.inputs.doubleOutlineEnabled.addEventListener('change', () => {
+            this.updateDoubleOutlineVisibility();
+        });
+    }
+
+    updateDoubleOutlineVisibility() {
+        const outlineEnabled = this.inputs.outlineEnabled.checked;
+        const outlineWidth = parseInt(this.inputs.outlineWidth.value) || 0;
+        const doubleEnabled = this.inputs.doubleOutlineEnabled.checked;
+
+        // Show double outline section only if outline is enabled and width >= 1
+        if (outlineEnabled && outlineWidth >= 1) {
+            this.inputs.doubleOutlineSection.style.display = '';
+        } else {
+            this.inputs.doubleOutlineSection.style.display = 'none';
+            this.inputs.doubleOutlineSettings.style.display = 'none';
+            this.inputs.doubleOutlineColorWidth.style.display = 'none';
+            return;
+        }
+
+        // Show settings only if double outline is enabled
+        if (doubleEnabled) {
+            this.inputs.doubleOutlineSettings.style.display = '';
+            this.inputs.doubleOutlineColorWidth.style.display = '';
+        } else {
+            this.inputs.doubleOutlineSettings.style.display = 'none';
+            this.inputs.doubleOutlineColorWidth.style.display = 'none';
+        }
     }
 
     loadGoogleFont(fontFamily) {
@@ -132,6 +182,18 @@ class App {
         this.settings.outlineEnabled = this.inputs.outlineEnabled.checked;
         this.settings.outlineColor = this.inputs.outlineColor.value;
         this.settings.outlineWidth = parseInt(this.inputs.outlineWidth.value);
+        this.settings.doubleOutlineEnabled = this.inputs.doubleOutlineEnabled.checked;
+
+        // Get selected radio button value
+        for (const radio of this.inputs.doubleOutlineMode) {
+            if (radio.checked) {
+                this.settings.doubleOutlineMode = radio.value;
+                break;
+            }
+        }
+
+        this.settings.doubleOutlineColor = this.inputs.doubleOutlineColor.value;
+        this.settings.doubleOutlineWidth = parseInt(this.inputs.doubleOutlineWidth.value);
     }
 
     async handleFontUpload(file) {
@@ -266,6 +328,27 @@ class App {
                 x = this.canvas.width / 2;
             }
 
+            // Draw double outline (blur or normal)
+            if (this.settings.outlineEnabled && this.settings.doubleOutlineEnabled) {
+                if (this.settings.doubleOutlineMode === 'blur') {
+                    // Blur mode: use shadow blur
+                    ctx.save();
+                    ctx.shadowColor = this.settings.doubleOutlineColor;
+                    ctx.shadowBlur = this.settings.doubleOutlineWidth * 2;
+                    ctx.fillStyle = this.settings.doubleOutlineColor;
+                    ctx.fillText(line, x, currentY);
+                    ctx.restore();
+                } else {
+                    // Normal mode: draw as stroke
+                    ctx.strokeStyle = this.settings.doubleOutlineColor;
+                    ctx.lineWidth = this.settings.outlineWidth + (this.settings.doubleOutlineWidth * 2);
+                    ctx.lineJoin = 'round';
+                    ctx.miterLimit = 2;
+                    ctx.strokeText(line, x, currentY);
+                }
+            }
+
+            // Draw outline
             if (this.settings.outlineEnabled) {
                 ctx.strokeStyle = this.settings.outlineColor;
                 ctx.lineWidth = this.settings.outlineWidth;
@@ -274,6 +357,7 @@ class App {
                 ctx.strokeText(line, x, currentY);
             }
 
+            // Draw text
             ctx.fillStyle = this.settings.textColor;
             ctx.fillText(line, x, currentY);
 
