@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字パネルメーカー</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- JSZip for ZIP generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Google Fonts Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Default Font -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=Potta+One&family=RocknRoll+One&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <h1>文字パネルメーカー</h1>
+            <p>テキストから画像をかんたん生成</p>
+        </header>
+
+        <main>
+            <div class="settings-panel">
+                <section class="setting-group">
+                    <h2>1. サイズ設定</h2>
+                    <div class="input-row">
+                        <label>
+                            幅 (px)
+                            <input type="number" id="canvasWidth" value="800" step="100" min="100">
+                        </label>
+                        <label>
+                            高さ (px)
+                            <input type="number" id="canvasHeight" value="600" step="100" min="100">
+                        </label>
+                    </div>
+                    <div class="input-row">
+                        <label>
+                            比率 (幅:高)
+                            <div class="ratio-inputs">
+                                <input type="number" id="ratioWidth" placeholder="4" min="1">
+                                <span>:</span>
+                                <input type="number" id="ratioHeight" placeholder="3" min="1">
+                            </div>
+                        </label>
+                        <button id="applyRatioBtn" class="secondary-btn">比率適用</button>
+                    </div>
+                </section>
+
+                <section class="setting-group">
+                    <h2>2. 背景設定</h2>
+                    <div class="radio-group">
+                        <label><input type="radio" name="bgType" value="transparent" checked> 透過</label>
+                        <label><input type="radio" name="bgType" value="color"> 単色</label>
+                        <label><input type="radio" name="bgType" value="image"> 画像</label>
+                    </div>
+
+                    <div id="bgSettingColor" class="sub-setting hidden">
+                        <div class="input-row">
+                            <label>背景色 <input type="color" id="bgColor" value="#ffffff"></label>
+                        </div>
+                        <div class="input-row">
+                            <label><input type="checkbox" id="bgBorderEnabled"> 枠線をつける</label>
+                        </div>
+                        <div class="input-row indent">
+                            <label>枠線色 <input type="color" id="bgBorderColor" value="#000000"></label>
+                            <label>太さ <input type="number" id="bgBorderWidth" value="10" min="0"> px</label>
+                        </div>
+                    </div>
+
+                    <div id="bgSettingImage" class="sub-setting hidden">
+                        <input type="file" id="bgImageInput" accept="image/*">
+                    </div>
+                </section>
+
+                <section class="setting-group">
+                    <h2>3. 文字設定</h2>
+                    <div class="input-row">
+                        <label>
+                            フォント
+                            <select id="fontSelect">
+                                <option value="Noto Sans JP">Noto Sans JP (ゴシック)</option>
+                                <option value="Noto Serif JP">Noto Serif JP (明朝)</option>
+                                <option value="Dela Gothic One">Dela Gothic One (極太)</option>
+                                <option value="Potta One">Potta One (ポップ)</option>
+                                <option value="RocknRoll One">RocknRoll One (ロック)</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="input-row">
+                        <label>
+                            ウェイト (太さ)
+                            <select id="fontWeight">
+                                <option value="400">Regular (標準)</option>
+                                <option value="700" selected>Bold (太字)</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="input-row">
+                        <label>
+                            フォントサイズ
+                            <input type="number" id="fontSize" value="45" min="10"> px
+                        </label>
+                    </div>
+                    <div class="input-row">
+                        <label>ファイル読込 <input type="file" id="fontFileInput" accept=".ttf,.otf,.woff,.woff2"></label>
+                    </div>
+                    <div class="input-row">
+                        <label>文字色 <input type="color" id="textColor" value="#000000"></label>
+                        <label>行揃え
+                            <select id="textAlign">
+                                <option value="left">左揃え</option>
+                                <option value="center" selected>中央揃え</option>
+                                <option value="right">右揃え</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="input-row">
+                        <label><input type="checkbox" id="textOutlineEnabled" checked> 文字の縁取り</label>
+                    </div>
+                    <div class="input-row indent">
+                        <label>縁取り色 <input type="color" id="textOutlineColor" value="#ffffff"></label>
+                        <label>太さ <input type="number" id="textOutlineWidth" value="5" min="0"> px</label>
+                    </div>
+                </section>
+            </div>
+
+            <div class="main-content">
+                <section class="input-area">
+                    <h2>テキスト入力</h2>
+                    <p class="hint">空行で区切ると複数の画像を生成します。</p>
+                    <textarea id="textInput"
+                        placeholder="ここにテキストを入力&#13;&#10;改行も反映されます&#13;&#10;&#13;&#10;空行を挟むと&#13;&#10;次の画像になります"></textarea>
+                    <button id="generateBtn" class="primary-btn">画像を生成する (反映)</button>
+                </section>
+
+                <section class="preview-area">
+                    <div class="preview-header">
+                        <h2>プレビュー</h2>
+                        <button id="downloadZipBtn" class="action-btn">すべてZIPで保存</button>
+                    </div>
+                    <div id="previewContainer" class="preview-grid">
+                        <!-- Generated images will appear here -->
+                        <div class="placeholder-msg">「画像を生成する」ボタンを押してください</div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
