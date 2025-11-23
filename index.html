@@ -63,6 +63,13 @@
                         <div class="input-row">
                             <label>背景色 <input type="color" id="bgColor" value="#ffffff"></label>
                         </div>
+                    </div>
+
+                    <div id="bgSettingImage" class="sub-setting hidden">
+                        <input type="file" id="bgImageInput" accept="image/*">
+                    </div>
+
+                    <div id="bgSettingColorImage" class="sub-setting hidden">
                         <div class="input-row">
                             <label><input type="checkbox" id="bgBorderEnabled"> 枠線をつける</label>
                         </div>
@@ -70,10 +77,9 @@
                             <label>枠線色 <input type="color" id="bgBorderColor" value="#000000"></label>
                             <label>太さ <input type="number" id="bgBorderWidth" value="10" min="0"> px</label>
                         </div>
-                    </div>
-
-                    <div id="bgSettingImage" class="sub-setting hidden">
-                        <input type="file" id="bgImageInput" accept="image/*">
+                        <div class="input-row">
+                            <label>角丸 <input type="number" id="bgCornerRadius" value="0" min="0"> px</label>
+                        </div>
                     </div>
                 </section>
 

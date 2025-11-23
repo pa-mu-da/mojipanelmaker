@@ -12,6 +12,7 @@ class App {
             height: 600,
             bgType: 'transparent',
             bgImage: null,
+            bgCornerRadius: 0,
             fontFamily: "Noto Sans JP",
             fontWeight: '700',
             fontSize: 45,
@@ -43,6 +44,7 @@ class App {
             bgBorderEnabled: document.getElementById('bgBorderEnabled'),
             bgBorderColor: document.getElementById('bgBorderColor'),
             bgBorderWidth: document.getElementById('bgBorderWidth'),
+            bgCornerRadius: document.getElementById('bgCornerRadius'),
             bgImageInput: document.getElementById('bgImageInput'),
             fontSelect: document.getElementById('fontSelect'),
             fontWeight: document.getElementById('fontWeight'),
@@ -63,6 +65,7 @@ class App {
             previewContainer: document.getElementById('previewContainer'),
             bgSettingColor: document.getElementById('bgSettingColor'),
             bgSettingImage: document.getElementById('bgSettingImage'),
+            bgSettingColorImage: document.getElementById('bgSettingColorImage'),
             doubleOutlineSection: document.getElementById('doubleOutlineSection'),
             doubleOutlineSettings: document.getElementById('doubleOutlineSettings'),
             doubleOutlineColorWidth: document.getElementById('doubleOutlineColorWidth')
@@ -165,6 +168,7 @@ class App {
         const type = this.settings.bgType;
         this.inputs.bgSettingColor.classList.toggle('hidden', type !== 'color');
         this.inputs.bgSettingImage.classList.toggle('hidden', type !== 'image');
+        this.inputs.bgSettingColorImage.classList.toggle('hidden', type === 'transparent');
     }
 
     updateSettingsFromInputs() {
@@ -174,6 +178,7 @@ class App {
         this.settings.bgBorderEnabled = this.inputs.bgBorderEnabled.checked;
         this.settings.bgBorderColor = this.inputs.bgBorderColor.value;
         this.settings.bgBorderWidth = parseInt(this.inputs.bgBorderWidth.value);
+        this.settings.bgCornerRadius = parseInt(this.inputs.bgCornerRadius.value) || 0;
         this.settings.fontFamily = this.inputs.fontSelect.value;
         this.settings.fontWeight = this.inputs.fontWeight.value;
         this.settings.fontSize = parseInt(this.inputs.fontSize.value) || 45;
@@ -268,18 +273,40 @@ class App {
     drawBackground(ctx) {
         const w = this.canvas.width;
         const h = this.canvas.height;
+        const radius = this.settings.bgCornerRadius;
 
         if (this.settings.bgType === 'color') {
             ctx.fillStyle = this.settings.bgColor;
-            ctx.fillRect(0, 0, w, h);
+
+            if (radius > 0) {
+                this.drawRoundedRect(ctx, 0, 0, w, h, radius, true, false);
+            } else {
+                ctx.fillRect(0, 0, w, h);
+            }
+
             if (this.settings.bgBorderEnabled) {
                 const bw = this.settings.bgBorderWidth;
                 ctx.strokeStyle = this.settings.bgBorderColor;
                 ctx.lineWidth = bw;
-                ctx.strokeRect(bw / 2, bw / 2, w - bw, h - bw);
+
+                if (radius > 0) {
+                    this.drawRoundedRect(ctx, bw / 2, bw / 2, w - bw, h - bw, Math.max(0, radius - bw / 2), false, true);
+                } else {
+                    ctx.strokeRect(bw / 2, bw / 2, w - bw, h - bw);
+                }
             }
         } else if (this.settings.bgType === 'image' && this.settings.bgImage) {
             const img = this.settings.bgImage;
+
+            // Create clipping path for rounded corners
+            if (radius > 0) {
+                ctx.save();
+                ctx.beginPath();
+                this.createRoundedRectPath(ctx, 0, 0, w, h, radius);
+                ctx.clip();
+            }
+
+            // Draw image
             const imgRatio = img.width / img.height;
             const canvasRatio = w / h;
             let dw, dh, dx, dy;
@@ -295,7 +322,44 @@ class App {
                 dy = (h - dh) / 2;
             }
             ctx.drawImage(img, dx, dy, dw, dh);
+
+            if (radius > 0) {
+                ctx.restore();
+            }
+
+            // Draw border
+            if (this.settings.bgBorderEnabled) {
+                const bw = this.settings.bgBorderWidth;
+                ctx.strokeStyle = this.settings.bgBorderColor;
+                ctx.lineWidth = bw;
+
+                if (radius > 0) {
+                    this.drawRoundedRect(ctx, bw / 2, bw / 2, w - bw, h - bw, Math.max(0, radius - bw / 2), false, true);
+                } else {
+                    ctx.strokeRect(bw / 2, bw / 2, w - bw, h - bw);
+                }
+            }
         }
+    }
+
+    createRoundedRectPath(ctx, x, y, width, height, radius) {
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.arcTo(x + width, y, x + width, y + radius, radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius);
+        ctx.lineTo(x + radius, y + height);
+        ctx.arcTo(x, y + height, x, y + height - radius, radius);
+        ctx.lineTo(x, y + radius);
+        ctx.arcTo(x, y, x + radius, y, radius);
+    }
+
+    drawRoundedRect(ctx, x, y, width, height, radius, fill, stroke) {
+        ctx.beginPath();
+        this.createRoundedRectPath(ctx, x, y, width, height, radius);
+        ctx.closePath();
+        if (fill) ctx.fill();
+        if (stroke) ctx.stroke();
     }
 
     drawText(ctx, text) {
