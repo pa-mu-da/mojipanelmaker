@@ -308,11 +308,11 @@ class App {
         if (fontFamily.includes('Gothic') || fontFamily.includes('One')) fallback = 'cursive';
 
         ctx.font = `${this.settings.fontWeight} ${this.settings.fontSize}px "${fontFamily}", ${fallback}`;
-        ctx.textBaseline = 'top';
+        ctx.textBaseline = 'middle';
 
         const lineHeight = this.settings.fontSize * 1.2;
         const totalHeight = lines.length * lineHeight;
-        let currentY = (this.canvas.height - totalHeight) / 2;
+        let currentY = (this.canvas.height - totalHeight) / 2 + lineHeight / 2;
 
         lines.forEach(line => {
             let x;
