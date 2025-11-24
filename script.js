@@ -13,6 +13,11 @@ class App {
             bgType: 'transparent',
             bgImage: null,
             bgCornerRadius: 0,
+            bgPadding: 0,
+            borderImageEnabled: false,
+            borderImage: null,
+            borderImageBlendMode: 'normal',
+            borderImageOpacity: 100,
             fontFamily: "Noto Sans JP",
             fontWeight: '700',
             fontSize: 45,
@@ -45,7 +50,17 @@ class App {
             bgBorderColor: document.getElementById('bgBorderColor'),
             bgBorderWidth: document.getElementById('bgBorderWidth'),
             bgCornerRadius: document.getElementById('bgCornerRadius'),
+            bgPadding: document.getElementById('bgPadding'),
             bgImageInput: document.getElementById('bgImageInput'),
+            borderImageEnabled: document.getElementById('borderImageEnabled'),
+            borderImageInput: document.getElementById('borderImageInput'),
+            borderImageBlendMode: document.getElementById('borderImageBlendMode'),
+            borderImageOpacitySlider: document.getElementById('borderImageOpacitySlider'),
+            borderImageOpacityValue: document.getElementById('borderImageOpacityValue'),
+            borderImageSection: document.getElementById('borderImageSection'),
+            borderImageSettings: document.getElementById('borderImageSettings'),
+            borderImageBlend: document.getElementById('borderImageBlend'),
+            borderImageOpacity: document.getElementById('borderImageOpacity'),
             fontSelect: document.getElementById('fontSelect'),
             fontWeight: document.getElementById('fontWeight'),
             fontFileInput: document.getElementById('fontFileInput'),
@@ -133,6 +148,32 @@ class App {
         this.inputs.doubleOutlineEnabled.addEventListener('change', () => {
             this.updateDoubleOutlineVisibility();
         });
+
+        // Border image overlay controls
+        this.inputs.bgBorderEnabled.addEventListener('change', () => {
+            this.updateBorderImageVisibility();
+        });
+
+        this.inputs.borderImageEnabled.addEventListener('change', () => {
+            this.updateBorderImageVisibility();
+        });
+
+        this.inputs.borderImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => { this.settings.borderImage = img; };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        this.inputs.borderImageOpacitySlider.addEventListener('input', (e) => {
+            this.inputs.borderImageOpacityValue.textContent = e.target.value;
+        });
     }
 
     updateDoubleOutlineVisibility() {
@@ -171,6 +212,33 @@ class App {
         this.inputs.bgSettingColorImage.classList.toggle('hidden', type === 'transparent');
     }
 
+    updateBorderImageVisibility() {
+        const borderEnabled = this.inputs.bgBorderEnabled.checked;
+        const borderImageEnabled = this.inputs.borderImageEnabled.checked;
+
+        // Show border image section only if border is enabled
+        if (borderEnabled) {
+            this.inputs.borderImageSection.style.display = '';
+        } else {
+            this.inputs.borderImageSection.style.display = 'none';
+            this.inputs.borderImageSettings.style.display = 'none';
+            this.inputs.borderImageBlend.style.display = 'none';
+            this.inputs.borderImageOpacity.style.display = 'none';
+            return;
+        }
+
+        // Show settings only if border image is enabled
+        if (borderImageEnabled) {
+            this.inputs.borderImageSettings.style.display = '';
+            this.inputs.borderImageBlend.style.display = '';
+            this.inputs.borderImageOpacity.style.display = '';
+        } else {
+            this.inputs.borderImageSettings.style.display = 'none';
+            this.inputs.borderImageBlend.style.display = 'none';
+            this.inputs.borderImageOpacity.style.display = 'none';
+        }
+    }
+
     updateSettingsFromInputs() {
         this.settings.width = parseInt(this.inputs.width.value);
         this.settings.height = parseInt(this.inputs.height.value);
@@ -179,6 +247,10 @@ class App {
         this.settings.bgBorderColor = this.inputs.bgBorderColor.value;
         this.settings.bgBorderWidth = parseInt(this.inputs.bgBorderWidth.value);
         this.settings.bgCornerRadius = parseInt(this.inputs.bgCornerRadius.value) || 0;
+        this.settings.bgPadding = parseInt(this.inputs.bgPadding.value) || 0;
+        this.settings.borderImageEnabled = this.inputs.borderImageEnabled.checked;
+        this.settings.borderImageBlendMode = this.inputs.borderImageBlendMode.value;
+        this.settings.borderImageOpacity = parseInt(this.inputs.borderImageOpacitySlider.value);
         this.settings.fontFamily = this.inputs.fontSelect.value;
         this.settings.fontWeight = this.inputs.fontWeight.value;
         this.settings.fontSize = parseInt(this.inputs.fontSize.value) || 45;
@@ -254,14 +326,47 @@ class App {
 
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+        // Calculate effective dimensions with padding
+        const padding = this.settings.bgPadding;
+
         // Set clipping to canvas bounds
         ctx.save();
         ctx.beginPath();
         ctx.rect(0, 0, this.canvas.width, this.canvas.height);
         ctx.clip();
 
-        this.drawBackground(ctx);
-        this.drawText(ctx, textBlock);
+        // Apply padding offset
+        if (padding > 0) {
+            ctx.translate(padding, padding);
+
+            // Create a temporary canvas for the padded content
+            const tempCanvas = document.createElement('canvas');
+            const effectiveWidth = this.canvas.width - (padding * 2);
+            const effectiveHeight = this.canvas.height - (padding * 2);
+            tempCanvas.width = effectiveWidth;
+            tempCanvas.height = effectiveHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Draw on temporary canvas
+            const originalCanvas = this.canvas;
+            const originalCtx = this.ctx;
+            this.canvas = tempCanvas;
+            this.ctx = tempCtx;
+
+            this.drawBackground(tempCtx);
+            this.drawText(tempCtx, textBlock);
+
+            // Restore original canvas and context
+            this.canvas = originalCanvas;
+            this.ctx = originalCtx;
+
+            // Draw the temporary canvas onto the main canvas
+            ctx.drawImage(tempCanvas, 0, 0);
+        } else {
+            // No padding, draw directly
+            this.drawBackground(ctx);
+            this.drawText(ctx, textBlock);
+        }
 
         ctx.restore();
 
@@ -293,6 +398,11 @@ class App {
                     this.drawRoundedRect(ctx, bw / 2, bw / 2, w - bw, h - bw, Math.max(0, radius - bw / 2), false, true);
                 } else {
                     ctx.strokeRect(bw / 2, bw / 2, w - bw, h - bw);
+                }
+
+                // Draw border image overlay
+                if (this.settings.borderImageEnabled && this.settings.borderImage) {
+                    this.drawBorderImageOverlay(ctx, w, h, radius, bw);
                 }
             }
         } else if (this.settings.bgType === 'image' && this.settings.bgImage) {
@@ -338,8 +448,73 @@ class App {
                 } else {
                     ctx.strokeRect(bw / 2, bw / 2, w - bw, h - bw);
                 }
+
+                // Draw border image overlay
+                if (this.settings.borderImageEnabled && this.settings.borderImage) {
+                    this.drawBorderImageOverlay(ctx, w, h, radius, bw);
+                }
             }
         }
+    }
+
+    drawBorderImageOverlay(ctx, w, h, radius, borderWidth) {
+        const img = this.settings.borderImage;
+        const opacity = this.settings.borderImageOpacity / 100;
+        const blendMode = this.settings.borderImageBlendMode;
+
+        // Create a temporary canvas for the border region
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = w;
+        tempCanvas.height = h;
+        const tempCtx = tempCanvas.getContext('2d');
+
+        // First, clip to outer rounded rectangle shape
+        tempCtx.save();
+        tempCtx.beginPath();
+        if (radius > 0) {
+            this.createRoundedRectPath(tempCtx, 0, 0, w, h, radius);
+        } else {
+            tempCtx.rect(0, 0, w, h);
+        }
+        tempCtx.clip();
+
+        // Draw the border image scaled to canvas size with opacity
+        tempCtx.globalAlpha = opacity;
+        tempCtx.drawImage(img, 0, 0, w, h);
+        tempCtx.restore();
+
+        // Now subtract the inner region
+        const innerX = borderWidth;
+        const innerY = borderWidth;
+        const innerW = w - borderWidth * 2;
+        const innerH = h - borderWidth * 2;
+        const innerRadius = Math.max(0, radius - borderWidth);
+
+        tempCtx.globalCompositeOperation = 'destination-out';
+        tempCtx.fillStyle = '#000';
+        tempCtx.beginPath();
+        if (innerRadius > 0) {
+            this.createRoundedRectPath(tempCtx, innerX, innerY, innerW, innerH, innerRadius);
+        } else {
+            tempCtx.rect(innerX, innerY, innerW, innerH);
+        }
+        tempCtx.fill();
+
+        // Apply blend mode and draw to main canvas
+        ctx.save();
+        ctx.globalCompositeOperation = this.getCanvasBlendMode(blendMode);
+        ctx.drawImage(tempCanvas, 0, 0);
+        ctx.restore();
+    }
+
+    getCanvasBlendMode(mode) {
+        const blendModes = {
+            'normal': 'source-over',
+            'overlay': 'overlay',
+            'multiply': 'multiply',
+            'screen': 'screen'
+        };
+        return blendModes[mode] || 'source-over';
     }
 
     createRoundedRectPath(ctx, x, y, width, height, radius) {

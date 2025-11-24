@@ -77,8 +77,32 @@
                             <label>枠線色 <input type="color" id="bgBorderColor" value="#000000"></label>
                             <label>太さ <input type="number" id="bgBorderWidth" value="10" min="0"> px</label>
                         </div>
+                        <div class="input-row indent" id="borderImageSection" style="display: none;">
+                            <label><input type="checkbox" id="borderImageEnabled"> 枠線に画像を重ねる</label>
+                        </div>
+                        <div class="input-row indent" id="borderImageSettings"
+                            style="display: none; margin-left: 48px;">
+                            <label>画像 <input type="file" id="borderImageInput" accept="image/*"></label>
+                        </div>
+                        <div class="input-row indent" id="borderImageBlend" style="display: none; margin-left: 48px;">
+                            <label>合成モード
+                                <select id="borderImageBlendMode">
+                                    <option value="normal">通常</option>
+                                    <option value="overlay">オーバーレイ</option>
+                                    <option value="multiply">乗算</option>
+                                    <option value="screen">スクリーン</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="input-row indent" id="borderImageOpacity" style="display: none; margin-left: 48px;">
+                            <label>透明度 <input type="range" id="borderImageOpacitySlider" min="0" max="100" value="100">
+                                <span id="borderImageOpacityValue">100</span>%</label>
+                        </div>
                         <div class="input-row">
                             <label>角丸 <input type="number" id="bgCornerRadius" value="0" min="0"> px</label>
+                        </div>
+                        <div class="input-row">
+                            <label>余白 <input type="number" id="bgPadding" value="0" min="0"> px</label>
                         </div>
                     </div>
                 </section>
