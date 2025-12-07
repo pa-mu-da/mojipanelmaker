@@ -28,8 +28,13 @@ class App {
             outlineWidth: 5,
             doubleOutlineEnabled: false,
             doubleOutlineMode: 'normal',
+            doubleOutlineMode: 'normal',
             doubleOutlineColor: '#000000',
-            doubleOutlineWidth: 3
+            doubleOutlineWidth: 3,
+            textImageEnabled: false,
+            textImage: null,
+            textImageBlendMode: 'source-over',
+            textImageOpacity: 100
         };
 
         this.initElements();
@@ -83,7 +88,16 @@ class App {
             bgSettingColorImage: document.getElementById('bgSettingColorImage'),
             doubleOutlineSection: document.getElementById('doubleOutlineSection'),
             doubleOutlineSettings: document.getElementById('doubleOutlineSettings'),
-            doubleOutlineColorWidth: document.getElementById('doubleOutlineColorWidth')
+            doubleOutlineSettings: document.getElementById('doubleOutlineSettings'),
+            doubleOutlineColorWidth: document.getElementById('doubleOutlineColorWidth'),
+            textImageEnabled: document.getElementById('textImageEnabled'),
+            textImageInput: document.getElementById('textImageInput'),
+            textImageBlendMode: document.getElementById('textImageBlendMode'),
+            textImageOpacitySlider: document.getElementById('textImageOpacitySlider'),
+            textImageOpacityValue: document.getElementById('textImageOpacityValue'),
+            textImageSettings: document.getElementById('textImageSettings'),
+            textImageBlend: document.getElementById('textImageBlend'),
+            textImageOpacity: document.getElementById('textImageOpacity')
         };
     }
 
@@ -174,6 +188,28 @@ class App {
         this.inputs.borderImageOpacitySlider.addEventListener('input', (e) => {
             this.inputs.borderImageOpacityValue.textContent = e.target.value;
         });
+
+        // Text image overlay controls
+        this.inputs.textImageEnabled.addEventListener('change', () => {
+            this.updateTextImageVisibility();
+        });
+
+        this.inputs.textImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => { this.settings.textImage = img; };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        this.inputs.textImageOpacitySlider.addEventListener('input', (e) => {
+            this.inputs.textImageOpacityValue.textContent = e.target.value;
+        });
     }
 
     updateDoubleOutlineVisibility() {
@@ -233,9 +269,21 @@ class App {
             this.inputs.borderImageBlend.style.display = '';
             this.inputs.borderImageOpacity.style.display = '';
         } else {
-            this.inputs.borderImageSettings.style.display = 'none';
             this.inputs.borderImageBlend.style.display = 'none';
             this.inputs.borderImageOpacity.style.display = 'none';
+        }
+    }
+
+    updateTextImageVisibility() {
+        const enabled = this.inputs.textImageEnabled.checked;
+        if (enabled) {
+            this.inputs.textImageSettings.style.display = '';
+            this.inputs.textImageBlend.style.display = '';
+            this.inputs.textImageOpacity.style.display = '';
+        } else {
+            this.inputs.textImageSettings.style.display = 'none';
+            this.inputs.textImageBlend.style.display = 'none';
+            this.inputs.textImageOpacity.style.display = 'none';
         }
     }
 
@@ -271,6 +319,9 @@ class App {
 
         this.settings.doubleOutlineColor = this.inputs.doubleOutlineColor.value;
         this.settings.doubleOutlineWidth = parseInt(this.inputs.doubleOutlineWidth.value);
+        this.settings.textImageEnabled = this.inputs.textImageEnabled.checked;
+        this.settings.textImageBlendMode = this.inputs.textImageBlendMode.value;
+        this.settings.textImageOpacity = parseInt(this.inputs.textImageOpacitySlider.value);
     }
 
     async handleFontUpload(file) {
@@ -553,6 +604,19 @@ class App {
         const totalHeight = lines.length * lineHeight;
         let currentY = (this.canvas.height - totalHeight) / 2 + lineHeight / 2;
 
+        // Prepare for Texture Overlay if enabled
+        let textureCanvas = null;
+        let textureCtx = null;
+        if (this.settings.textImageEnabled && this.settings.textImage) {
+            textureCanvas = document.createElement('canvas');
+            textureCanvas.width = this.canvas.width;
+            textureCanvas.height = this.canvas.height;
+            textureCtx = textureCanvas.getContext('2d');
+            textureCtx.font = ctx.font;
+            textureCtx.textBaseline = ctx.textBaseline;
+            textureCtx.textAlign = 'center'; // Will be updated in loop
+        }
+
         lines.forEach(line => {
             let x;
 
@@ -565,6 +629,11 @@ class App {
             } else {
                 ctx.textAlign = 'center';
                 x = this.canvas.width / 2;
+            }
+
+            // Sync alignment for texture context
+            if (textureCtx) {
+                textureCtx.textAlign = ctx.textAlign;
             }
 
             // Draw double outline (blur or normal)
@@ -596,12 +665,32 @@ class App {
                 ctx.strokeText(line, x, currentY);
             }
 
-            // Draw text
+            // Draw base text connection (color)
             ctx.fillStyle = this.settings.textColor;
             ctx.fillText(line, x, currentY);
 
+            // Draw to texture mask
+            if (textureCtx) {
+                textureCtx.fillStyle = '#FFFFFF';
+                textureCtx.fillText(line, x, currentY);
+            }
+
             currentY += lineHeight;
         });
+
+        // Apply texture overlay
+        if (textureCanvas && textureCtx) {
+            // 1. Clip texture to text shape
+            textureCtx.globalCompositeOperation = 'source-in';
+            textureCtx.drawImage(this.settings.textImage, 0, 0, this.canvas.width, this.canvas.height);
+
+            // 2. Draw textured text onto main canvas with blend mode and opacity
+            ctx.save();
+            ctx.globalAlpha = this.settings.textImageOpacity / 100;
+            ctx.globalCompositeOperation = this.settings.textImageBlendMode; // e.g. 'source-over'
+            ctx.drawImage(textureCanvas, 0, 0);
+            ctx.restore();
+        }
     }
 
     addPreviewItem(dataUrl, text, index) {

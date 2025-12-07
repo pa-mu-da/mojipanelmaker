@@ -310,6 +310,26 @@
                         </label>
                     </div>
                     <div class="input-row">
+                        <label><input type="checkbox" id="textImageEnabled"> 文字に画像を重ねる</label>
+                    </div>
+                    <div class="input-row indent" id="textImageSettings" style="display: none;">
+                        <label>画像 <input type="file" id="textImageInput" accept="image/*"></label>
+                    </div>
+                    <div class="input-row indent" id="textImageBlend" style="display: none;">
+                        <label>合成モード
+                            <select id="textImageBlendMode">
+                                <option value="source-over">通常 (上書き)</option>
+                                <option value="overlay">オーバーレイ</option>
+                                <option value="multiply">乗算</option>
+                                <option value="screen">スクリーン</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="input-row indent" id="textImageOpacity" style="display: none;">
+                        <label>透明度 <input type="range" id="textImageOpacitySlider" min="0" max="100" value="100">
+                            <span id="textImageOpacityValue">100</span>%</label>
+                    </div>
+                    <div class="input-row">
                         <label><input type="checkbox" id="textOutlineEnabled" checked> 文字の縁取り</label>
                     </div>
                     <div class="input-row indent">
@@ -362,5 +382,4 @@
 
 
 </html>
-
 
