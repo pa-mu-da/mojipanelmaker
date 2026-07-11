@@ -6,6 +6,8 @@ class App {
     constructor() {
         this.canvas = document.createElement('canvas');
         this.ctx = this.canvas.getContext('2d');
+        this.isImageLoading = false; // Flag to track image loading state
+        this.autoPreviewTimeout = null; // Timeout for debounced auto-preview
 
         this.settings = {
             width: 800,
@@ -28,7 +30,6 @@ class App {
             outlineWidth: 5,
             doubleOutlineEnabled: false,
             doubleOutlineMode: 'normal',
-            doubleOutlineMode: 'normal',
             doubleOutlineColor: '#000000',
             doubleOutlineWidth: 3,
             textImageEnabled: false,
@@ -39,7 +40,16 @@ class App {
 
         this.initElements();
         this.initEventListeners();
+        
+        // Sync with HTML inputs and initialize visibility
+        this.updateSettingsFromInputs();
+        this.updateBgSettingsVisibility();
         this.updateDoubleOutlineVisibility();
+        this.updateBorderImageVisibility();
+        this.updateTextImageVisibility();
+        if (this.inputs.themeSelect) {
+            document.documentElement.className = this.inputs.themeSelect.value;
+        }
     }
 
     initElements() {
@@ -88,13 +98,13 @@ class App {
             bgSettingColorImage: document.getElementById('bgSettingColorImage'),
             doubleOutlineSection: document.getElementById('doubleOutlineSection'),
             doubleOutlineSettings: document.getElementById('doubleOutlineSettings'),
-            doubleOutlineSettings: document.getElementById('doubleOutlineSettings'),
             doubleOutlineColorWidth: document.getElementById('doubleOutlineColorWidth'),
             textImageEnabled: document.getElementById('textImageEnabled'),
             textImageInput: document.getElementById('textImageInput'),
             textImageBlendMode: document.getElementById('textImageBlendMode'),
             textImageOpacitySlider: document.getElementById('textImageOpacitySlider'),
             textImageOpacityValue: document.getElementById('textImageOpacityValue'),
+            themeSelect: document.getElementById('themeSelect'),
             textImageSettings: document.getElementById('textImageSettings'),
             textImageBlend: document.getElementById('textImageBlend'),
             textImageOpacity: document.getElementById('textImageOpacity')
@@ -106,6 +116,7 @@ class App {
             radio.addEventListener('change', (e) => {
                 this.settings.bgType = e.target.value;
                 this.updateBgSettingsVisibility();
+                this.triggerAutoPreview();
             });
         });
 
@@ -114,14 +125,28 @@ class App {
             this.generateImages();
         });
 
-        this.inputs.applyRatio.addEventListener('click', () => {
-            const w = parseInt(this.inputs.ratioWidth.value);
-            const h = parseInt(this.inputs.ratioHeight.value);
+        this.inputs.applyRatio.addEventListener('click', (e) => {
+            e.preventDefault();
+            let w = parseInt(this.inputs.ratioWidth.value);
+            let h = parseInt(this.inputs.ratioHeight.value);
+            
+            // Fallback to placeholder values if empty
+            if (isNaN(w)) {
+                w = parseInt(this.inputs.ratioWidth.placeholder) || 4;
+            }
+            if (isNaN(h)) {
+                h = parseInt(this.inputs.ratioHeight.placeholder) || 3;
+            }
+
             if (w && h) {
-                const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
-                const divisor = gcd(w, h);
-                this.inputs.width.value = (w / divisor) * 100;
-                this.inputs.height.value = (h / divisor) * 100;
+                let currentWidth = parseInt(this.inputs.width.value);
+                if (!currentWidth || currentWidth <= 0) {
+                    currentWidth = 800;
+                    this.inputs.width.value = currentWidth;
+                }
+                const calculatedHeight = Math.round(currentWidth * (h / w));
+                this.inputs.height.value = calculatedHeight;
+                this.triggerAutoPreview(0); // apply ratio should trigger preview instantly
             }
         });
 
@@ -132,10 +157,19 @@ class App {
         this.inputs.bgImageInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
+                this.isImageLoading = true;
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const img = new Image();
-                    img.onload = () => { this.settings.bgImage = img; };
+                    img.onload = () => {
+                        this.settings.bgImage = img;
+                        this.isImageLoading = false;
+                        this.triggerAutoPreview(0);
+                    };
+                    img.onerror = () => {
+                        this.isImageLoading = false;
+                        alert('背景画像の読み込みに失敗しました');
+                    };
                     img.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
@@ -148,37 +182,52 @@ class App {
 
         this.inputs.fontSelect.addEventListener('change', (e) => {
             this.loadGoogleFont(e.target.value);
+            this.triggerAutoPreview();
         });
 
         // Double outline visibility control
         this.inputs.outlineEnabled.addEventListener('change', () => {
             this.updateDoubleOutlineVisibility();
+            this.triggerAutoPreview();
         });
 
         this.inputs.outlineWidth.addEventListener('input', () => {
             this.updateDoubleOutlineVisibility();
+            this.triggerAutoPreview();
         });
 
         this.inputs.doubleOutlineEnabled.addEventListener('change', () => {
             this.updateDoubleOutlineVisibility();
+            this.triggerAutoPreview();
         });
 
         // Border image overlay controls
         this.inputs.bgBorderEnabled.addEventListener('change', () => {
             this.updateBorderImageVisibility();
+            this.triggerAutoPreview();
         });
 
         this.inputs.borderImageEnabled.addEventListener('change', () => {
             this.updateBorderImageVisibility();
+            this.triggerAutoPreview();
         });
 
         this.inputs.borderImageInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
+                this.isImageLoading = true;
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const img = new Image();
-                    img.onload = () => { this.settings.borderImage = img; };
+                    img.onload = () => {
+                        this.settings.borderImage = img;
+                        this.isImageLoading = false;
+                        this.triggerAutoPreview(0);
+                    };
+                    img.onerror = () => {
+                        this.isImageLoading = false;
+                        alert('枠線画像の読み込みに失敗しました');
+                    };
                     img.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
@@ -187,20 +236,31 @@ class App {
 
         this.inputs.borderImageOpacitySlider.addEventListener('input', (e) => {
             this.inputs.borderImageOpacityValue.textContent = e.target.value;
+            this.triggerAutoPreview();
         });
 
         // Text image overlay controls
         this.inputs.textImageEnabled.addEventListener('change', () => {
             this.updateTextImageVisibility();
+            this.triggerAutoPreview();
         });
 
         this.inputs.textImageInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
+                this.isImageLoading = true;
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const img = new Image();
-                    img.onload = () => { this.settings.textImage = img; };
+                    img.onload = () => {
+                        this.settings.textImage = img;
+                        this.isImageLoading = false;
+                        this.triggerAutoPreview(0);
+                    };
+                    img.onerror = () => {
+                        this.isImageLoading = false;
+                        alert('文字テクスチャ画像の読み込みに失敗しました');
+                    };
                     img.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
@@ -209,7 +269,64 @@ class App {
 
         this.inputs.textImageOpacitySlider.addEventListener('input', (e) => {
             this.inputs.textImageOpacityValue.textContent = e.target.value;
+            this.triggerAutoPreview();
         });
+
+        // Theme switching control
+        if (this.inputs.themeSelect) {
+            this.inputs.themeSelect.addEventListener('change', (e) => {
+                document.documentElement.className = e.target.value;
+            });
+        }
+
+        // Auto-preview setup for settings inputs
+        const autoPreviewInputs = [
+            this.inputs.width,
+            this.inputs.height,
+            this.inputs.bgColor,
+            this.inputs.bgBorderEnabled,
+            this.inputs.bgBorderColor,
+            this.inputs.bgBorderWidth,
+            this.inputs.bgCornerRadius,
+            this.inputs.bgPadding,
+            this.inputs.fontWeight,
+            this.inputs.fontSize,
+            this.inputs.textColor,
+            this.inputs.textAlign,
+            this.inputs.outlineColor,
+            this.inputs.outlineWidth,
+            this.inputs.doubleOutlineColor,
+            this.inputs.doubleOutlineWidth,
+            this.inputs.textImageBlendMode,
+            this.inputs.borderImageBlendMode
+        ];
+
+        autoPreviewInputs.forEach(input => {
+            if (input) {
+                const eventType = input.type === 'checkbox' || input.tagName === 'SELECT' || input.type === 'color' ? 'change' : 'input';
+                input.addEventListener(eventType, () => this.triggerAutoPreview());
+            }
+        });
+
+        if (this.inputs.doubleOutlineMode) {
+            this.inputs.doubleOutlineMode.forEach(radio => {
+                radio.addEventListener('change', () => this.triggerAutoPreview());
+            });
+        }
+
+        if (this.inputs.text) {
+            this.inputs.text.addEventListener('input', () => this.triggerAutoPreview(300));
+        }
+    }
+
+    triggerAutoPreview(delay = 200) {
+        if (this.autoPreviewTimeout) {
+            clearTimeout(this.autoPreviewTimeout);
+        }
+        this.autoPreviewTimeout = setTimeout(() => {
+            this.updateSettingsFromInputs();
+            this.generateImages();
+        }, delay);
     }
 
     updateDoubleOutlineVisibility() {
@@ -348,15 +465,20 @@ class App {
     }
 
     async generateImages() {
+        if (this.isImageLoading) {
+            // Do not generate if images are still loading (onload will trigger it later)
+            return;
+        }
         const text = this.inputs.text.value;
         if (!text.trim()) {
-            alert('テキストを入力してください');
+            this.inputs.previewContainer.innerHTML = '<div class="placeholder-msg">「画像を生成する」ボタンを押すか、テキストを入力してください</div>';
+            this.generatedImages = [];
             return;
         }
 
         try {
             await document.fonts.load(`${this.settings.fontWeight} ${this.settings.fontSize}px "${this.settings.fontFamily}"`);
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 200));
         } catch (e) {
             console.warn('Font loading warning:', e);
         }
@@ -371,11 +493,13 @@ class App {
     }
 
     createImage(textBlock, index) {
-        this.canvas.width = this.settings.width;
-        this.canvas.height = this.settings.height;
+        const w = this.settings.width;
+        const h = this.settings.height;
+        this.canvas.width = w;
+        this.canvas.height = h;
         const ctx = this.ctx;
 
-        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.clearRect(0, 0, w, h);
 
         // Calculate effective dimensions with padding
         const padding = this.settings.bgPadding;
@@ -383,7 +507,7 @@ class App {
         // Set clipping to canvas bounds
         ctx.save();
         ctx.beginPath();
-        ctx.rect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.rect(0, 0, w, h);
         ctx.clip();
 
         // Apply padding offset
@@ -392,31 +516,21 @@ class App {
 
             // Create a temporary canvas for the padded content
             const tempCanvas = document.createElement('canvas');
-            const effectiveWidth = this.canvas.width - (padding * 2);
-            const effectiveHeight = this.canvas.height - (padding * 2);
+            const effectiveWidth = w - (padding * 2);
+            const effectiveHeight = h - (padding * 2);
             tempCanvas.width = effectiveWidth;
             tempCanvas.height = effectiveHeight;
             const tempCtx = tempCanvas.getContext('2d');
 
-            // Draw on temporary canvas
-            const originalCanvas = this.canvas;
-            const originalCtx = this.ctx;
-            this.canvas = tempCanvas;
-            this.ctx = tempCtx;
-
-            this.drawBackground(tempCtx);
-            this.drawText(tempCtx, textBlock);
-
-            // Restore original canvas and context
-            this.canvas = originalCanvas;
-            this.ctx = originalCtx;
+            this.drawBackground(tempCtx, effectiveWidth, effectiveHeight);
+            this.drawText(tempCtx, textBlock, effectiveWidth, effectiveHeight);
 
             // Draw the temporary canvas onto the main canvas
             ctx.drawImage(tempCanvas, 0, 0);
         } else {
             // No padding, draw directly
-            this.drawBackground(ctx);
-            this.drawText(ctx, textBlock);
+            this.drawBackground(ctx, w, h);
+            this.drawText(ctx, textBlock, w, h);
         }
 
         ctx.restore();
@@ -426,9 +540,7 @@ class App {
         this.addPreviewItem(dataUrl, textBlock, index);
     }
 
-    drawBackground(ctx) {
-        const w = this.canvas.width;
-        const h = this.canvas.height;
+    drawBackground(ctx, w, h) {
         const radius = this.settings.bgCornerRadius;
 
         if (this.settings.bgType === 'color') {
@@ -588,7 +700,7 @@ class App {
         if (stroke) ctx.stroke();
     }
 
-    drawText(ctx, text) {
+    drawText(ctx, text, w, h) {
         const lines = text.split('\n');
         const padding = 10;
 
@@ -602,15 +714,15 @@ class App {
 
         const lineHeight = this.settings.fontSize * 1.2;
         const totalHeight = lines.length * lineHeight;
-        let currentY = (this.canvas.height - totalHeight) / 2 + lineHeight / 2;
+        let currentY = (h - totalHeight) / 2 + lineHeight / 2;
 
         // Prepare for Texture Overlay if enabled
         let textureCanvas = null;
         let textureCtx = null;
         if (this.settings.textImageEnabled && this.settings.textImage) {
             textureCanvas = document.createElement('canvas');
-            textureCanvas.width = this.canvas.width;
-            textureCanvas.height = this.canvas.height;
+            textureCanvas.width = w;
+            textureCanvas.height = h;
             textureCtx = textureCanvas.getContext('2d');
             textureCtx.font = ctx.font;
             textureCtx.textBaseline = ctx.textBaseline;
@@ -625,10 +737,10 @@ class App {
                 x = padding;
             } else if (this.settings.textAlign === 'right') {
                 ctx.textAlign = 'right';
-                x = this.canvas.width - padding;
+                x = w - padding;
             } else {
                 ctx.textAlign = 'center';
-                x = this.canvas.width / 2;
+                x = w / 2;
             }
 
             // Sync alignment for texture context
@@ -682,7 +794,7 @@ class App {
         if (textureCanvas && textureCtx) {
             // 1. Clip texture to text shape
             textureCtx.globalCompositeOperation = 'source-in';
-            textureCtx.drawImage(this.settings.textImage, 0, 0, this.canvas.width, this.canvas.height);
+            textureCtx.drawImage(this.settings.textImage, 0, 0, w, h);
 
             // 2. Draw textured text onto main canvas with blend mode and opacity
             ctx.save();
@@ -744,7 +856,8 @@ class App {
     }
 
     sanitizeFilename(text) {
-        return text.replace(/[\\/:*?"<>|]/g, '').substring(0, 10).trim() || 'image';
+        const safeText = text.replace(/[\\/:*?"<>|]/g, '').trim();
+        return Array.from(safeText).slice(0, 10).join('') || 'image';
     }
 }
 

@@ -1,10 +1,9 @@
 :root {
     --primary-color: #4a90e2;
     --primary-hover: #357abd;
-    --bg-color: #f5f7fa;
-    --panel-bg: #ffffff;
-    --text-color: #333333;
-    --border-color: #e1e4e8;
+    --bg-color: var(--app-bg-color, #f5f7fa);
+    --panel-bg: var(--modal-bg-color, #ffffff);
+    --text-color: var(--app-text-color, #333333);
     --spacing-sm: 8px;
     --spacing-md: 16px;
     --spacing-lg: 24px;
@@ -260,9 +259,16 @@ textarea {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><rect width="10" height="10" fill="%23eee"/><rect x="10" y="10" width="10" height="10" fill="%23eee"/></svg>');
+    background-image: conic-gradient(
+        var(--checker-color, #e5e7eb) 0.25turn, 
+        transparent 0.25turn 0.5turn, 
+        var(--checker-color, #e5e7eb) 0.5turn 0.75turn, 
+        transparent 0.75turn
+    );
+    background-size: 20px 20px;
+    background-color: var(--checker-bg, #ffffff);
     overflow: hidden;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color, #ddd);
 }
 
 .preview-image-wrapper img {
